@@ -49,8 +49,8 @@ const MOCK_USERS: { [key: string]: UserProfile } = {
   You: {
     username: "You",
     handle: "@girlboss",
-    avatar: "/abstract-geometric-shapes.png",
-    bio: "Software Engineer, Mom, Wife, Investor 💵",
+    avatar: "https://www.google.com/url?sa=i&url=https%3A%2F%2Fwww.freepik.com%2Ffree-photos-vectors%2Fwoman-smiling-face&psig=AOvVaw285RgbY1bj66dc7QDJlMto&ust=1763937280995000&source=images&cd=vfe&opi=89978449&ved=0CBUQjRxqFwoTCMi3hsrohpEDFQAAAAAdAAAAABBR",
+    bio: "Software Engineer, Hack Western Mustang",
     portfolioValue: "$40,452",
     totalReturn: 18.5,
     followers: 11,
