@@ -1,11 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { GoogleGenerativeAI } from "@google/generative-ai"
 
 export async function POST(request: NextRequest) {
   try {
     const { fullText, highlightedText, userQuestion } = await request.json()
 
-    // Validate input
-    if (!fullText || !highlightedText) {
+    // Validate that we have at least something to work with
+    if (!userQuestion && !highlightedText) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
@@ -23,41 +24,51 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Build the prompt for Gemini
-    const prompt = `You are a helpful financial education assistant. A user is reading about finance and has highlighted some text.
+    let prompt: string
 
-Full context:
-"${fullText}"
+    if (userQuestion && !highlightedText) {
+      // Learn tab case: just a question
+      prompt = `You are a helpful financial education assistant. Answer the following question clearly and concisely:
 
-Highlighted text:
+${userQuestion}
+
+Provide a clear, educational response suitable for someone learning about finance.`
+    } else if (highlightedText && !userQuestion) {
+      // Highlight case: explain the highlighted text
+      prompt = `You are a helpful financial education assistant. A user is reading about finance and has highlighted some text.
+
+${fullText ? `Full context:\n"${fullText}"\n\n` : ""}Highlighted text:
 "${highlightedText}"
 
-${userQuestion ? `User's question: ${userQuestion}` : "Please explain the highlighted text in simple terms for someone learning about finance."}
+Please explain the highlighted text in simple terms for someone learning about finance.`
+    } else {
+      // Both: highlighted text + question
+      prompt = `You are a helpful financial education assistant. A user is reading about finance and has highlighted some text.
+
+${fullText ? `Full context:\n"${fullText}"\n\n` : ""}Highlighted text:
+"${highlightedText}"
+
+User's question: ${userQuestion}
 
 Provide a clear, concise, and educational response.`
+    }
 
-    // TODO: Make actual Gemini API call when ready
-    // const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'x-goog-api-key': apiKey
-    //   },
-    //   body: JSON.stringify({
-    //     contents: [{
-    //       parts: [{ text: prompt }]
-    //     }]
-    //   })
-    // })
-    // const data = await response.json()
-    // const answer = data.candidates[0].content.parts[0].text
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" })
 
-    // Placeholder response for now
-    const answer = `This is a placeholder response. When GEMINI_API_KEY is configured, I'll provide detailed explanations about "${highlightedText}" in the context of: "${fullText.substring(0, 100)}..."`
+    const result = await model.generateContent(prompt)
+    const response = await result.response
+    const answer = response.text()
 
     return NextResponse.json({ answer })
   } catch (error) {
     console.error("[v0] Gemini API error:", error)
-    return NextResponse.json({ error: "Failed to process request" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to process request",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
