@@ -188,21 +188,55 @@ export function LearnTab() {
     return Math.round((correct / selectedModule.quiz.questions.length) * 100)
   }
 
-  const handleAskAI = () => {
+  const handleAskAI = async () => {
     if (geminiQuestion.trim()) {
+      const userMessage = {
+        role: "user" as const,
+        content: geminiQuestion,
+      }
+      const loadingMessage = {
+        role: "ai" as const,
+        content: "Thinking...",
+      }
+
+      setGeminiMessages([userMessage, loadingMessage])
       setIsGeminiModalOpen(true)
-      setGeminiMessages([
-        {
-          role: "user",
-          content: geminiQuestion,
-        },
-        {
-          role: "ai",
-          content:
-            "Gemini integration coming soon. This is a placeholder response for your question about: " + geminiQuestion,
-        },
-      ])
+
+      const questionToAsk = geminiQuestion
       setGeminiQuestion("")
+
+      try {
+        const response = await fetch("/api/gemini", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fullText: "",
+            highlightedText: "",
+            userQuestion: questionToAsk,
+          }),
+        })
+
+        const data = await response.json()
+
+        setGeminiMessages([
+          userMessage,
+          {
+            role: "ai" as const,
+            content: data.answer || data.error || "Unable to get response from AI.",
+          },
+        ])
+      } catch (error) {
+        console.error("[v0] Error fetching AI response:", error)
+        setGeminiMessages([
+          userMessage,
+          {
+            role: "ai" as const,
+            content: "Failed to connect to AI service. Please try again later.",
+          },
+        ])
+      }
     }
   }
 
@@ -370,19 +404,7 @@ export function LearnTab() {
                     <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs">{module.type}</Badge>
                   </div>
                   <h3 className="font-semibold text-foreground mb-1">{module.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3 text-pretty">{module.description}</p>
-
-                  {module.videoUrl && (
-                    <div className="relative rounded-lg overflow-hidden mb-3 aspect-video border border-border">
-                      <video
-                        src="/finance-education-video-thumbnail.jpg"
-                        className="w-full h-full object-cover"
-                        controls
-                        preload="metadata"
-                      />
-                    </div>
-                  )}
-
+                  <p className="text-sm text-muted-foreground mb-4 text-pretty">{module.description}</p>
                   <Button
                     onClick={() => handleSelectModule(module)}
                     size="sm"
