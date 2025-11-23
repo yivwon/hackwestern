@@ -1,0 +1,23 @@
+{
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [],
+  "pages": {
+    "/_app": [
+      "static/chunks/bf712_next_dist_compiled_a00930ea._.js",
+      "static/chunks/bf712_next_dist_shared_lib_1786b010._.js",
+      "static/chunks/bf712_next_dist_client_8d903cfb._.js",
+      "static/chunks/bf712_next_dist_aefbf956._.js",
+      "static/chunks/bf712_next_app_ca720954.js",
+      "static/chunks/[next]_entry_page-loader_ts_0daf0b2f._.js",
+      "static/chunks/bf712_react-dom_6c599ba9._.js",
+      "static/chunks/bf712_de558633._.js",
+      "static/chunks/[root-of-the-server]__cdf035d7._.js",
+      "static/chunks/Downloads_hackwestern_pages__app_2da965e7._.js",
+      "static/chunks/turbopack-Downloads_hackwestern_pages__app_fa9d4dd9._.js"
+    ]
+  },
+  "ampFirstPages": []
+}
