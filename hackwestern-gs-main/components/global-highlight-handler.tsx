@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Sparkles, X } from "lucide-react"
 import { AIChatModal } from "./ai-chat-modal"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 
 interface SelectionPosition {
   top: number
@@ -28,10 +30,11 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
   const [followUpQuestion, setFollowUpQuestion] = useState("")
   const [isChatModalOpen, setIsChatModalOpen] = useState(false)
   const [chatInitialMessages, setChatInitialMessages] = useState<Message[]>([])
+  const [aiInsight, setAiInsight] = useState<string>("")
+  const [isLoadingInsight, setIsLoadingInsight] = useState(false)
 
   useEffect(() => {
     const handleSelection = () => {
-      // Small delay to ensure selection is complete
       setTimeout(() => {
         const selection = window.getSelection()
 
@@ -52,7 +55,6 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
           const fullContext = (parentElement as HTMLElement)?.textContent?.trim() || text
           setFullText(fullContext)
 
-          // Position confirmation popup below the selection
           setConfirmationPosition({
             top: rect.bottom + window.scrollY + 8,
             left: rect.left + window.scrollX + rect.width / 2,
@@ -62,37 +64,17 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
           setShowConfirmation(true)
           setShowPlaceholder(false)
         } else {
-          setShowConfirmation(false)
+          if (text.length === 0) {
+            setShowConfirmation(false)
+          }
         }
       }, 10)
-    }
-
-    const handleClick = (e: MouseEvent) => {
-      const selection = window.getSelection()
-      if (selection && selection.toString().trim().length > 0) {
-        // Text is selected - prevent click actions
-        const target = e.target as HTMLElement
-
-        // Allow clicks on our UI elements
-        if (
-          target.closest("[data-confirmation-popup]") ||
-          target.closest("[data-placeholder-box]") ||
-          target.closest("[data-chat-modal]")
-        ) {
-          return
-        }
-
-        // Prevent propagation to clickable parent elements
-        e.stopPropagation()
-        e.preventDefault()
-        return
-      }
     }
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement
 
-      // Don't close if clicking inside any of our UI elements
+      // Don't close if clicking inside popup elements
       if (
         target.closest("[data-confirmation-popup]") ||
         target.closest("[data-placeholder-box]") ||
@@ -101,42 +83,61 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
         return
       }
 
-      // Close both confirmation and placeholder if clicking outside
+      // Close popups when clicking outside
       setShowConfirmation(false)
       setShowPlaceholder(false)
     }
 
-    document.addEventListener("click", handleClick, true)
     document.addEventListener("mouseup", handleSelection)
     document.addEventListener("touchend", handleSelection)
     document.addEventListener("click", handleClickOutside)
 
     return () => {
-      document.removeEventListener("click", handleClick, true)
       document.removeEventListener("mouseup", handleSelection)
       document.removeEventListener("touchend", handleSelection)
       document.removeEventListener("click", handleClickOutside)
     }
   }, [])
 
-  const handleAskAI = () => {
+  const handleAskAI = async () => {
     setShowConfirmation(false)
 
-    // Keep the same position as the confirmation popup but slightly lower
     setPlaceholderPosition({
       top: confirmationPosition.top + 50,
       left: confirmationPosition.left,
     })
 
     setShowPlaceholder(true)
+    setIsLoadingInsight(true)
+    setAiInsight("")
 
-    // Clear selection to avoid confusion
     window.getSelection()?.removeAllRanges()
+
+    try {
+      const response = await fetch("/api/gemini", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullText: fullText,
+          highlightedText: selectedText,
+          userQuestion: "",
+        }),
+      })
+
+      const data = await response.json()
+      setAiInsight(data.answer || data.error || "Unable to get response from AI.")
+    } catch (error) {
+      console.error("[v0] Error fetching AI insight:", error)
+      setAiInsight("Failed to connect to AI service. Please try again later.")
+    } finally {
+      setIsLoadingInsight(false)
+    }
   }
 
   const handleContinueToChat = async () => {
     if (followUpQuestion.trim()) {
-      // Add user's question to chat
       const contextMessage: Message = {
         role: "context",
         content: `Context: "${selectedText}"`,
@@ -145,6 +146,17 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
         role: "user",
         content: followUpQuestion,
       }
+      const loadingMessage: Message = {
+        role: "ai",
+        content: "Thinking...",
+      }
+
+      setChatInitialMessages([contextMessage, userMessage, loadingMessage])
+      setIsChatModalOpen(true)
+      setShowPlaceholder(false)
+
+      const questionToAsk = followUpQuestion
+      setFollowUpQuestion("")
 
       try {
         const response = await fetch("/api/gemini", {
@@ -155,7 +167,7 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
           body: JSON.stringify({
             fullText: fullText,
             highlightedText: selectedText,
-            userQuestion: followUpQuestion,
+            userQuestion: questionToAsk,
           }),
         })
 
@@ -168,22 +180,21 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
 
         setChatInitialMessages([contextMessage, userMessage, aiMessage])
       } catch (error) {
+        console.error("[v0] Error fetching AI response:", error)
         const errorMessage: Message = {
           role: "ai",
           content: "Failed to connect to AI service. Please try again later.",
         }
         setChatInitialMessages([contextMessage, userMessage, errorMessage])
       }
-
-      setIsChatModalOpen(true)
-      setShowPlaceholder(false)
-      setFollowUpQuestion("")
     }
   }
 
   const handleClosePlaceholder = () => {
     setShowPlaceholder(false)
     setFollowUpQuestion("")
+    setAiInsight("")
+    setIsLoadingInsight(false)
   }
 
   const handleCancelConfirmation = () => {
@@ -199,14 +210,16 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
       {showConfirmation && (
         <div
           data-confirmation-popup
-          className="fixed z-[9999] animate-in fade-in duration-200"
+          className="absolute animate-in fade-in duration-200"
           style={{
             top: `${confirmationPosition.top}px`,
             left: `${confirmationPosition.left}px`,
             transform: "translateX(-50%)",
+            zIndex: 50,
+            pointerEvents: "none",
           }}
         >
-          <Card className="px-4 py-3 border-pink-300 shadow-lg bg-white">
+          <Card className="px-4 py-3 border-pink-300 shadow-lg bg-white" style={{ pointerEvents: "auto" }}>
             <div className="flex items-center gap-3">
               <Sparkles className="w-4 h-4 text-pink-500" />
               <span className="text-sm text-foreground font-medium">Ask AI about this?</span>
@@ -236,26 +249,33 @@ export function GlobalHighlightHandler({ children }: { children: React.ReactNode
       {showPlaceholder && (
         <div
           data-placeholder-box
-          className="absolute z-[9999] w-[90%] max-w-md animate-in fade-in slide-in-from-top-4 duration-300"
+          className="absolute w-[90%] max-w-md animate-in fade-in slide-in-from-top-4 duration-300"
           style={{
             top: `${placeholderPosition.top}px`,
             left: `${placeholderPosition.left}px`,
             transform: "translateX(-50%)",
+            zIndex: 50,
+            pointerEvents: "none",
           }}
         >
-          <Card className="p-5 border-pink-300 shadow-2xl bg-white">
+          <Card className="p-5 border-pink-300 shadow-2xl bg-white" style={{ pointerEvents: "auto" }}>
             <div className="space-y-4">
               <div>
                 <h3 className="font-semibold text-foreground flex items-center gap-2 mb-2">
                   <Sparkles className="w-5 h-5 text-pink-500" />
-                  AI Insight (Gemini placeholder)
+                  AI Insight
                 </h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Gemini integration coming soon. This is where we would show an explanation or summary of the
-                  highlighted text:
-                </p>
-                <div className="bg-pink-50 border border-pink-200 rounded-lg p-3">
+                <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 mb-3">
                   <p className="text-sm text-pink-900 italic">"{selectedText}"</p>
+                </div>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  {isLoadingInsight ? (
+                    <p className="text-sm text-gray-600">Analyzing with Gemini...</p>
+                  ) : (
+                    <div className="text-sm text-gray-900 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-900 prose-strong:text-gray-900 prose-code:text-pink-600 prose-code:bg-pink-50 prose-code:px-1 prose-code:rounded">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiInsight || "No response yet."}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
               </div>
 
