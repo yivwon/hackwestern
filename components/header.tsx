@@ -16,7 +16,7 @@ export function Header({ activeTab, setActiveTab }: HeaderProps) {
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-foreground">MoneyCircle</span>
+            <span className="text-xl font-bold text-pink-500">divadends</span>
           </div>
 
           <nav className="flex gap-8">
