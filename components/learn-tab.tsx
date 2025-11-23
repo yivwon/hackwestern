@@ -38,7 +38,7 @@ const MOCK_MODULES: Module[] = [
     description: "Learn the basics of investing and why it matters for your financial future.",
     level: "Beginner",
     type: "Video",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoUrl: "https://www.youtube.com/embed/O5Qb_PGpeFE",
     keyTakeaways: [
       "Understanding compound interest and time in the market",
       "The difference between stocks, bonds, and ETFs",
@@ -52,7 +52,7 @@ const MOCK_MODULES: Module[] = [
     description: "Everything you need to know about Tax-Free Savings Accounts in Canada.",
     level: "Beginner",
     type: "Video",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoUrl: "https://www.youtube.com/embed/BfDA-i_ldts",
     keyTakeaways: [
       "TFSA contribution limits and rules",
       "Tax advantages of TFSA vs RRSP",
@@ -66,7 +66,7 @@ const MOCK_MODULES: Module[] = [
     description: "Discover why ETFs are popular for long-term investing and building wealth.",
     level: "Intermediate",
     type: "Video",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoUrl: "https://www.youtube.com/embed/DPsUntwGIAg", // Embed version of your link
     keyTakeaways: [
       "How ETFs provide instant diversification",
       "Understanding expense ratios",
@@ -117,14 +117,14 @@ const MOCK_MODULES: Module[] = [
     description: "Learn about bull markets, bear markets, and how to stay calm during volatility.",
     level: "Intermediate",
     type: "Video",
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    videoUrl: "https://www.youtube.com/embed/ebWL2TrIssA?start=426",
     keyTakeaways: [
       "What causes market ups and downs",
       "Historical market recovery patterns",
       "Emotional discipline during market crashes",
       "Dollar-cost averaging strategy",
     ],
-  },
+  },  
   {
     id: 6,
     title: "Portfolio Basics Quiz",
@@ -401,10 +401,27 @@ export function LearnTab() {
                     >
                       {module.level}
                     </Badge>
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs">{module.type}</Badge>
+                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs">
+                      {module.type}
+                    </Badge>
                   </div>
                   <h3 className="font-semibold text-foreground mb-1">{module.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-4 text-pretty">{module.description}</p>
+                  <p className="text-sm text-muted-foreground mb-4 text-pretty">
+                    {module.description}
+                  </p>
+
+                  {/* NEW: preview video inside each tutorial card */}
+                  {module.type === "Video" && module.videoUrl && (
+                    <div className="mb-4 rounded-lg overflow-hidden border border-border aspect-video">
+                      <iframe
+                        src={module.videoUrl}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                  )}
+
                   <Button
                     onClick={() => handleSelectModule(module)}
                     size="sm"
@@ -417,6 +434,7 @@ export function LearnTab() {
             </Card>
           ))}
         </div>
+
       </div>
 
       <AIChatModal
